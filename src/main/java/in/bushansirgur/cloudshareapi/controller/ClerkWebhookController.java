@@ -18,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ClerkWebhookController {
 
-    @Value("${clerk.webhook.secret}")
+    @Value("${clerk.webhook.secret:}")
     private String webhookSecret;
 
     private final ProfileService profileService;

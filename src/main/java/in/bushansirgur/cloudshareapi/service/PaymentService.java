@@ -28,12 +28,18 @@ public class PaymentService {
     private final UserCreditsService userCreditsService;
     private final PaymentTransactionRepository paymentTransactionRepository;
 
-    @Value("${razorpay.key.id}")
+    @Value("${razorpay.key.id:}")
     private String razorpayKeyId;
-    @Value("${razorpay.key.secret}")
+    @Value("${razorpay.key.secret:}")
     private String razorpayKeySecret;
 
     public PaymentDTO createOrder(PaymentDTO paymentDTO) {
+        if (razorpayKeyId == null || razorpayKeyId.isBlank() || razorpayKeySecret == null || razorpayKeySecret.isBlank()) {
+            return PaymentDTO.builder()
+                    .success(false)
+                    .message("Payment gateway is not configured on the server. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.")
+                    .build();
+        }
         try {
             ProfileDocument currentProfile = profileService.getCurrentProfile();
             String clerkId = currentProfile.getClerkId();
@@ -77,6 +83,12 @@ public class PaymentService {
     }
 
     public PaymentDTO verifyPayment(PaymentVerificationDTO request) {
+        if (razorpayKeySecret == null || razorpayKeySecret.isBlank()) {
+            return PaymentDTO.builder()
+                    .success(false)
+                    .message("Payment gateway secret is not configured on the server.")
+                    .build();
+        }
         try {
             ProfileDocument currentProfile = profileService.getCurrentProfile();
             String clerkId = currentProfile.getClerkId();

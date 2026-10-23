@@ -97,11 +97,21 @@ public class ProfileService {
     }
 
     public ProfileDocument getCurrentProfile() {
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            throw new UsernameNotFoundException("User not authenticated");
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
 
-        String clerkId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return profileRepository.findByClerkId(clerkId);
+        String clerkId = auth.getName();
+        ProfileDocument profile = profileRepository.findByClerkId(clerkId);
+        if (profile == null) {
+            profile = ProfileDocument.builder()
+                    .clerkId(clerkId)
+                    .credits(5)
+                    .createdAt(Instant.now())
+                    .build();
+            profile = profileRepository.save(profile);
+        }
+        return profile;
     }
 }

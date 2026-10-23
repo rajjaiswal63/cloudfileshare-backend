@@ -8,14 +8,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.parameters.P;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -56,13 +58,29 @@ public class FileController {
 
     @GetMapping("/download/{id}")
     public ResponseEntity<Resource> download(@PathVariable String id) throws IOException {
-        FileMetadataDTO downloadbleFile = fileMetadataService.getDownloadableFile(id);
-        Path path = Paths.get(downloadbleFile.getFileLocation());
+        FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
+        Path path = Paths.get(downloadableFile.getFileLocation());
+
+        if (!Files.exists(path) || !Files.isReadable(path)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File content not found on server or storage disk");
+        }
+
         Resource resource = new UrlResource(path.toUri());
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File content is not readable on server");
+        }
+
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (StringUtils.hasText(downloadableFile.getType())) {
+            try {
+                mediaType = MediaType.parseMediaType(downloadableFile.getType());
+            } catch (Exception ignored) {
+            }
+        }
 
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachemnt; filename=\""+downloadbleFile.getName()+"\"")
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadableFile.getName() + "\"")
                 .body(resource);
     }
 
